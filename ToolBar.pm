@@ -14,10 +14,13 @@ use POSIX qw/ceil/;
 Construct Tk::Widget 'ToolBar';
 
 use vars qw/$VERSION/;
-$VERSION = 0.08;
+$VERSION = 0.09;
 
 my $edgeH = 24;
-my $edgeW = 3;
+my $edgeW = 5;
+
+my $sepH  = 24;
+my $sepW  = 3;
 
 my %sideToSticky = qw(
 		      top    n
@@ -28,6 +31,7 @@ my %sideToSticky = qw(
 
 my $packIn     = '';
 my @allWidgets = ();
+my $floating   = 0;
 my %packIn;
 my %containers;
 my %isDummy;
@@ -72,6 +76,15 @@ sub Populate {
     $self->{STICKY} = exists $args->{-sticky}        ? delete $args->{-sticky}        : 'nsew';
     $self->{USECC}  = exists $args->{-cursorcontrol} ? delete $args->{-cursorcontrol} : 1;
     $self->{STYLE}  = exists $args->{-mystyle}       ? delete $args->{-mystyle}       : 0;
+    $packIn         = exists $args->{-in}            ? delete $args->{-in}            : '';
+
+    if ($packIn) {
+      unless ($packIn->isa('Tk::ToolBar')) {
+	croak "value of -packin '$packIn' is not a Tk::ToolBar object";
+      } else {
+	$self->{SIDE} = $packIn->{SIDE};
+      }
+    }
 
     unless ($self->{STICKY} =~ /$sideToSticky{$self->{SIDE}}/) {
 	croak "can't place '$self->{STICKY}' toolbar on '$self->{SIDE}' side";
@@ -81,13 +94,13 @@ sub Populate {
     $self->_packSelf;
 
     my $edge = $self->{CONTAINER}->Frame(qw/
-					 -borderwidth 5
+					 -borderwidth 2
 					 -relief ridge
 					 /);
 
     $self->{EDGE} = $edge;
 
-    $self->_packEdge($edge);
+    $self->_packEdge($edge, 1);
 
     $self->ConfigSpecs(
 		       -movable          => [qw/METHOD  movable          Movable             1/],
@@ -95,13 +108,14 @@ sub Populate {
 		       -activebackground => [qw/METHOD  activebackground ActiveBackground/, Tk::ACTIVE_BG],
 		       -indicatorcolor   => [qw/PASSIVE indicatorcolor   IndicatorColor/,   '#00C2F1'],
 		       -indicatorrelief  => [qw/PASSIVE indicatorrelief  IndicatorRelief    flat/],
+		       -float            => [qw/PASSIVE float            Float              1/],
 		      );
 
     push @allWidgets => $self;
 
     $containers{$self->{CONTAINER}} = $self;
 
-    $self->{BALLOON}   = $self->{MW}->Balloon;
+    $self->{BALLOON} = $self->{MW}->Balloon;
 
     # check for Tk::CursorControl
     $self->{CC} = undef;
@@ -121,7 +135,6 @@ sub activebackground {
     return unless $c; # ignore falses.
 
     $self->{ACTIVE_BG} = $c;
-    ref($_) ne 'Tk::ToolBar' && $_->configure(-activebackground => $c) for @allWidgets;
 }
 
 sub _packSelf {
@@ -160,23 +173,33 @@ sub _packSelf {
 sub _packEdge {
     my $self = shift;
     my $e    = shift;
+    my $w    = shift;
 
     my $s    = $self->{SIDE};
 
     my ($pack, $pad, $nopad, $fill);
 
     if ($s eq 'top' or $s eq 'bottom') {
+      if ($w) {
 	$e->configure(-height => $edgeH, -width => $edgeW);
-	$pack  = 'left';
-	$pad   = '-padx';
-	$nopad = '-pady';
-	$fill  = 'y';
+      } else {
+	$e->configure(-height => $sepH, -width => $sepW);
+      }
+      $pack  = 'left';
+      $pad   = '-padx';
+      $nopad = '-pady';
+      $fill  = 'y';
     } else {
+      if ($w) {
 	$e->configure(-height => $edgeW, -width => $edgeH);
-	$pack  = 'top';
-	$pad   = '-pady';
-	$nopad = '-padx';
-	$fill  = 'x';
+      } else {
+	$e->configure(-height => $sepW, -width => $sepH);
+      }
+
+      $pack  = 'top';
+      $pad   = '-pady';
+      $nopad = '-padx';
+      $fill  = 'x';
     }
 
     if (exists $self->{SEPARATORS}{$e}) {
@@ -198,7 +221,7 @@ sub movable {
 
 	if ($value) {
 	    $e->configure(qw/-cursor fleur/);
-	    $self->afterIdle(sub {$self->_enableEdge($e)});
+	    $self->afterIdle(sub {$self->_enableEdge()});
 	} else {
 	    $e->configure(-cursor => undef);
 	    $self->_disableEdge($e);
@@ -209,8 +232,9 @@ sub movable {
 }
 
 sub _enableEdge {
-  my ($self, $e) = @_;
+  my ($self) = @_;
 
+  my $e     = $self->_edge;
   my $hilte = $self->{MW}->Frame(-bg     => $self->cget('-indicatorcolor'),
 				 -relief => $self->cget('-indicatorrelief'));
 
@@ -219,67 +243,138 @@ sub _enableEdge {
 				 -borderwidth 2
 				 -relief ridge
 				 /);
-  my $drag  = 0;
 
-  $e->bind('<1>'         => sub { $self->{CC}->confine($self->{MW}) if defined $self->{CC} });
+  $self->{DUMMY} = $dummy;
+
+  my $drag     = 0;
+  #my $floating = 0;
+  my $clone;
+
+  my @mwSize;  # extent of mainwindow.
+
+  $e->bind('<1>'         => sub {
+	     $self->{CC}->confine($self->{MW}) if defined $self->{CC};
+	     my $geom      = $self->{MW}->geometry;
+	     my ($rx, $ry) = ($self->{MW}->rootx, $self->{MW}->rooty);
+
+	     if ($geom =~ /(\d+)x(\d+)/) {#\+(\d+)\+(\d+)/) {
+#	       @mwSize = ($3, $4, $1 + $3, $2 + $4);
+	       @mwSize = ($rx, $ry, $1 + $rx, $2 + $ry);
+	     } else {
+	       @mwSize = ();
+	     }
+
+	     if (!$self->{ISCLONE} && $self->{CLONE}) {
+	       $self->{CLONE}->destroy;
+	       $self->{CLONE} = $clone = undef;
+	       @allWidgets = grep Tk::Exists, @allWidgets;
+	     }
+
+	   });
+
   $e->bind('<B1-Motion>' => sub {
 	     my ($x, $y) = ($self->pointerx - $self->{MW}->rootx - ceil($e->width /2) - $e->x,
 			    $self->pointery - $self->{MW}->rooty - ceil($e->height/2) - $e->y);
 
-	     $dummy->place('-x' => $x, '-y' => $y);
+	     my ($px, $py) = $self->pointerxy;
 
-	     unless ($drag) {
+	     $dummy = $self->{ISCLONE} ? $self->{CLONE}{DUMMY} : $self->{DUMMY};
+
+	     unless ($drag or $floating) {
 	       $drag = 1;
 	       $dummy->raise;
-	       $self->packForget;
-
-	       $self->{CONTAINER}->pack(-in => $dummy);
-	       $self->{CONTAINER}->raise;
-	       ref($_) eq 'Tk::Frame' && $_->raise for $self->{CONTAINER}->packSlaves;
+	       my $noclone = $self->{ISCLONE} ? $self->{CLONE} : $self;
+	       $noclone->packForget;
+	       $noclone->{CONTAINER}->pack(-in => $dummy);
+	       $noclone->{CONTAINER}->raise;
+	       ref($_) eq 'Tk::Frame' && $_->raise for $noclone->{CONTAINER}->packSlaves;
 	     }
-
 	     $hilte->placeForget;
-	     return unless my $newSide = $self->_whereAmI($x, $y);
 
-	     # highlight the close edge.
-	     my ($op, $pp);
-	     if ($newSide =~ /top/) {
-	       $op = [qw/-height 5/];
-	       $pp = [qw/-relx 0 -relwidth 1 -y 0/];
-	     } elsif ($newSide =~ /bottom/) {
-	       $op = [qw/-height 5/];
-	       $pp = [qw/-relx 0 -relwidth 1 -y -5 -rely 1/];
-	     } elsif ($newSide =~ /left/) {
-	       $op = [qw/-width 5/];
-	       $pp = [qw/-x 0 -relheight 1 -y 0/];
-	     } elsif ($newSide =~ /right/) {
-	       $op = [qw/-width 5/];
-	       $pp = [qw/-x -5 -relx 1 -relheight 1 -y 0/];
+	     if ($self->cget('-float') &&
+		 (@mwSize and
+		 $px < $mwSize[0] or
+		 $py < $mwSize[1] or
+		 $px > $mwSize[2] or
+		 $py > $mwSize[3])) {
+
+	       # we are outside .. switch to toplevel mode.
+	       $dummy->placeForget;
+	       $floating = 1;
+
+	       unless ($self->{CLONE} || $self->{ISCLONE}) {
+		 # clone it.
+		 my $clone = $self->{MW}->Toplevel(qw/-relief ridge -borderwidth 2/);
+		 $clone->withdraw;
+		 $clone->overrideredirect(1);
+		 $self->_clone($clone);
+		 $self->{CLONE} = $clone;
+	       }
+
+	       $clone = $self->{ISCLONE} || $self->{CLONE};
+	       $clone->deiconify unless $clone->ismapped;
+	       $clone->geometry("+$px+$py");
+
+	     } else {
+	       $self->{ISCLONE}->withdraw if $self->{CLONE} && $self->{ISCLONE};
+
+	       $dummy->place('-x' => $x, '-y' => $y);
+	       $floating = 0;
+
+	       if (my $newSide = $self->_whereAmI($x, $y)) {
+		 # still inside main window.
+		 # highlight the close edge.
+		 $clone && $clone->ismapped && $clone->withdraw;
+		 #$self->{ISCLONE}->withdraw if $self->{CLONE} && $self->{ISCLONE};
+
+		 my ($op, $pp);
+		 if ($newSide =~ /top/) {
+		   $op = [qw/-height 5/];
+		   $pp = [qw/-relx 0 -relwidth 1 -y 0/];
+		 } elsif ($newSide =~ /bottom/) {
+		   $op = [qw/-height 5/];
+		   $pp = [qw/-relx 0 -relwidth 1 -y -5 -rely 1/];
+		 } elsif ($newSide =~ /left/) {
+		   $op = [qw/-width 5/];
+		   $pp = [qw/-x 0 -relheight 1 -y 0/];
+		 } elsif ($newSide =~ /right/) {
+		   $op = [qw/-width 5/];
+		   $pp = [qw/-x -5 -relx 1 -relheight 1 -y 0/];
+		 }
+
+		 $hilte->configure(@$op);
+		 $hilte->place(@$pp);
+		 $hilte->raise;
+	       }
 	     }
-
-	     $hilte->configure(@$op);
-	     $hilte->place(@$pp);
-	     $hilte->raise;
 	   });
 
     $e->bind('<ButtonRelease-1>' => sub {
+	my $noclone = $self->{ISCLONE} ? $self->{CLONE} : $self;
+	$noclone->{CC}->free($noclone->{MW}) if defined $noclone->{CC};
 	return unless $drag;
 
 	$drag = 0;
 	$dummy->placeForget;
-	$self->{CC}->free($self->{MW}) if defined $self->{CC};
+
+	# forget everything if it's cloned.
+	return if $clone && $clone->ismapped;
+
+	# destroy the clone.
+	#$clone->destroy;
 
 	#return unless $self->_whereAmI(1);
-	$self->_whereAmI(1);
+	$noclone->_whereAmI(1);
 	$hilte->placeForget;
 
 	# repack everything now.
-	my @allSlaves = grep {$_ ne $e} $self->{CONTAINER}->packSlaves;
-	$_   ->packForget for $self, @allSlaves, $self->{CONTAINER};
+	my $ec = $noclone->_edge;
+	my @allSlaves = grep {$_ ne $ec} $noclone->{CONTAINER}->packSlaves;
+	$_   ->packForget for $noclone, @allSlaves, $noclone->{CONTAINER};
 
-	$self->_packSelf;
-	$self->_packEdge($e);
-	$self->_packWidget($_) for @allSlaves;
+	$noclone->_packSelf;
+	$noclone->_packEdge($ec, 1);
+	$noclone->_packWidget($_) for @allSlaves;
     });
 }
 
@@ -356,14 +451,19 @@ sub _whereAmI {
 	    my $y1 = $w->y;
 	    my $x2 = $x1 + $w->width;
 	    my $y2 = $y1 + $w->height;
-		
+
 	    if ($x > $x1 and $y > $y1 and $x < $x2 and $y < $y2) {
 		$packIn = $w;
 		last;
 	    }
 	}
 
-	$self->{SIDE} = $packIn->{SIDE} if $packIn;
+      $self->{SIDE} = $packIn->{SIDE} if $packIn;
+#	if ($packIn) {
+#	  $self->{SIDE} = $packIn->{SIDE};
+#	} else {
+#	  return undef;
+#	}
     } else {
 	return undef;
     }
@@ -533,7 +633,7 @@ sub _packWidget {
 	my @allSlaves = grep {$_ ne $e} $b->packSlaves;
 	$_   ->packForget for @allSlaves;
 
-	$top->_packEdge($e);
+	$top->_packEdge($e, 1);
 	$top->_packWidget($_) for @allSlaves;
     }
 
@@ -579,7 +679,7 @@ sub _packWidget_old {
 	my @allSlaves = grep {$_ ne $e} $b->packSlaves;
 	$_   ->packForget for @allSlaves;
 
-	$top->_packEdge($e);
+	$top->_packEdge($e, 1);
 	$top->_packWidget($_) for @allSlaves;
     }
 
@@ -641,6 +741,43 @@ sub Entry      { goto &ToolEntry      }
 sub LabEntry   { goto &ToolLabEntry   }
 sub Optionmenu { goto &ToolOptionmenu }
 
+sub _clone {
+  my ($self, $top, $in) = @_;
+
+  my $new = $top->ToolBar(qw/-side top -cursorcontrol/, $self->{USECC}, ($in ? (-in => $in, -movable => 0) : ()));
+  my $e   = $self->_edge;
+
+  my @allSlaves = grep {$_ ne $e} $self->{CONTAINER}->packSlaves;
+  for my $w (@allSlaves) {
+    my $t = ref $w;
+    $t =~ s/Tk:://;
+
+    if ($t eq 'Frame' && exists $containers{$w}) { # embedded toolbar
+      my $obj = $containers{$w};
+      $obj->_clone($top, $new);
+    }
+
+    if ($t eq 'Frame' && exists $self->{SEPARATORS}{$w}) {  # separator
+      $new->separator;
+    }
+
+    my %c = map { $_->[0], $_->[4] || $_->[3] } grep {defined $_->[4] || $_->[3] } grep @$_ > 2, $w->configure;
+    delete $c{$_} for qw/-offset -class -tile -visual -colormap -labelPack/;
+
+    if ($t =~ /.button/) {
+      $new->Button(-type => $t,
+		   %c);
+    } else {
+      $new->$t(%c);
+    }
+  }
+
+  $new ->{MW}      = $self->{MW};
+  $new ->{CLONE}   = $self;
+  $new ->{ISCLONE} = $top;
+  $self->{ISCLONE} = 0;
+}
+
 __END__
 
 =pod
@@ -698,10 +835,13 @@ Moreover, the ToolBar itself can be made dockable, such that it can be dragged t
 any edge of your window. Dragging is done in "real-time" so that you can see the
 contents of your ToolBar as you are dragging it. Furthermore, if you are close to
 a stickable edge, a visual indicator will show up along that edge to guide you.
+ToolBars can be made "floatable" such that if they are dragged beyond their
+associated window, they will detach and float on the desktop.
 Also, multiple ToolBars are embeddable inside each other.
 
 If you drag a ToolBar to within 15 pixels of an edge, it will stick to that
-edge. If the ToolBar is further than 15 pixels away from an edge, but you
+edge. If the ToolBar is further than 15 pixels away from an edge and still
+inside the window, but you
 release it over another ToolBar widget, then it will be embedded inside the
 second ToolBar. You can "un-embed" an embedded ToolBar simply by dragging it
 out. You can change the 15 pixel limit using the B<-close> option.
@@ -749,6 +889,18 @@ This option specifies which sides the toolbar is allowed to stick to. The value
 must be a string of the following characters 'nsew'. A string of 'ns' means that
 the ToolBar can only stick to the north (top) or south (bottom) sides. Defaults to
 'nsew'. This option can be set only during object creation.
+
+=item B<-in>
+
+This option allows the toolbar to be embedded within another already instantiated
+Tk::ToolBar object. The value must be a Tk::ToolBar object. This option can be set
+only during object creation.
+
+=item B<-float>
+
+This option specifies whether the toolbar should "float" on the desktop if
+dragged outside of the window. It defaults to 1. Note that this value is
+ignored if I<-cursorcontrol> is set to 1.
 
 =item B<-cursorcontrol>
 
@@ -928,7 +1080,7 @@ or just stick it somewhere in @INC where perl can find it. It's in pure Perl.
 =head1 ACKNOWLEDGEMENTS
 
 The following people have given me helpful comments and bug reports to keep me busy:
-Chris Whiting, Jack Dunnigan, Robert Brooks, Peter Lipecka and Martin Thurn.
+Chris Whiting, Jack Dunnigan, Robert Brooks, Peter Lipecka, Martin Thurn and Shahriar Mokhtarzad.
 
 Also thanks to the various artists of the KDE team for creating those great icons,
 and to Adrian Davis for packaging them in a Tk-friendly format.

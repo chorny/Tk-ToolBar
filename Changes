@@ -38,3 +38,9 @@ Revision history for Perl extension Tk::ToolBar.
 	- Added -indicatorcolor and -indicatorrelief options to 
 	  control color/relief of visual indicator.
 	- Changed default visual indicator color to nice blue.
+
+0.09  Fri Jan  9 18:28:31 PST 2004
+	- Added -in.
+	- Added -float. Now toolbars can float on desktop.
+	- Changed shape of edge slightly
+

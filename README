@@ -47,15 +47,17 @@ DESCRIPTION
     dragged to any edge of your window. Dragging is done in "real-time" so
     that you can see the contents of your ToolBar as you are dragging it.
     Furthermore, if you are close to a stickable edge, a visual indicator
-    will show up along that edge to guide you. Also, multiple ToolBars are
-    embeddable inside each other.
+    will show up along that edge to guide you. ToolBars can be made
+    "floatable" such that if they are dragged beyond their associated
+    window, they will detach and float on the desktop. Also, multiple
+    ToolBars are embeddable inside each other.
 
     If you drag a ToolBar to within 15 pixels of an edge, it will stick to
-    that edge. If the ToolBar is further than 15 pixels away from an edge,
-    but you release it over another ToolBar widget, then it will be embedded
-    inside the second ToolBar. You can "un-embed" an embedded ToolBar simply
-    by dragging it out. You can change the 15 pixel limit using the -close
-    option.
+    that edge. If the ToolBar is further than 15 pixels away from an edge
+    and still inside the window, but you release it over another ToolBar
+    widget, then it will be embedded inside the second ToolBar. You can
+    "un-embed" an embedded ToolBar simply by dragging it out. You can change
+    the 15 pixel limit using the -close option.
 
     Various icons are built into the Tk::ToolBar widget. Those icons can be
     used as images for ToolButtons (see the SYNOPSIS entry elsewhere in this
@@ -96,6 +98,15 @@ WIDGET-SPECIFIC OPTIONS
         string of 'ns' means that the ToolBar can only stick to the north
         (top) or south (bottom) sides. Defaults to 'nsew'. This option can
         be set only during object creation.
+
+    -in This option allows the toolbar to be embedded within another already
+        instantiated Tk::ToolBar object. The value must be a Tk::ToolBar
+        object. This option can be set only during object creation.
+
+    -float
+        This option specifies whether the toolbar should "float" on the
+        desktop if dragged outside of the window. It defaults to 1. Note
+        that this value is ignored if *-cursorcontrol* is set to 1.
 
     -cursorcontrol
         This option specifies whether to use Tk::CursorControl to confine
@@ -216,7 +227,6 @@ TODO
     the -accelerator method for buttons.
     o Implement Drag-n-Drop to be able to move Tool* widgets interactively.
     Do we really want this?
-
 PREREQUISITES
     Tk::ToolBar uses only core pTk modules. So you don't need any special
     prerequisites. But, if Tk::CursorControl is installed on your system,
@@ -244,8 +254,8 @@ INSTALLATION
 
 ACKNOWLEDGEMENTS
     The following people have given me helpful comments and bug reports to
-    keep me busy: Chris Whiting, Jack Dunnigan, Robert Brooks, Peter Lipecka
-    and Martin Thurn.
+    keep me busy: Chris Whiting, Jack Dunnigan, Robert Brooks, Peter
+    Lipecka, Martin Thurn and Shahriar Mokhtarzad.
 
     Also thanks to the various artists of the KDE team for creating those
     great icons, and to Adrian Davis for packaging them in a Tk-friendly
