@@ -14,7 +14,7 @@ use POSIX qw/ceil/;
 Construct Tk::Widget 'ToolBar';
 
 use vars qw/$VERSION/;
-$VERSION = 0.07;
+$VERSION = 0.08;
 
 my $edgeH = 24;
 my $edgeW = 3;
@@ -44,6 +44,8 @@ sub ClassInit {
     if (defined $imageFile) {
 	local *F;
 	open F, $imageFile;
+
+	local $_;
 
 	while (<F>) {
 	    chomp;
@@ -91,6 +93,8 @@ sub Populate {
 		       -movable          => [qw/METHOD  movable          Movable             1/],
 		       -close            => [qw/PASSIVE close            Close              15/],
 		       -activebackground => [qw/METHOD  activebackground ActiveBackground/, Tk::ACTIVE_BG],
+		       -indicatorcolor   => [qw/PASSIVE indicatorcolor   IndicatorColor/,   '#00C2F1'],
+		       -indicatorrelief  => [qw/PASSIVE indicatorrelief  IndicatorRelief    flat/],
 		      );
 
     push @allWidgets => $self;
@@ -194,7 +198,7 @@ sub movable {
 
 	if ($value) {
 	    $e->configure(qw/-cursor fleur/);
-	    $self->_enableEdge($e);
+	    $self->afterIdle(sub {$self->_enableEdge($e)});
 	} else {
 	    $e->configure(-cursor => undef);
 	    $self->_disableEdge($e);
@@ -207,7 +211,9 @@ sub movable {
 sub _enableEdge {
   my ($self, $e) = @_;
 
-  my $hilte = $self->{MW}->Frame(-bg => 'white');
+  my $hilte = $self->{MW}->Frame(-bg     => $self->cget('-indicatorcolor'),
+				 -relief => $self->cget('-indicatorrelief'));
+
   my $dummy = $self->{MW}->Frame(
 				 qw/
 				 -borderwidth 2
@@ -215,6 +221,7 @@ sub _enableEdge {
 				 /);
   my $drag  = 0;
 
+  $e->bind('<1>'         => sub { $self->{CC}->confine($self->{MW}) if defined $self->{CC} });
   $e->bind('<B1-Motion>' => sub {
 	     my ($x, $y) = ($self->pointerx - $self->{MW}->rootx - ceil($e->width /2) - $e->x,
 			    $self->pointery - $self->{MW}->rooty - ceil($e->height/2) - $e->y);
@@ -312,7 +319,7 @@ sub _whereAmI {
     my $dy = 0;
 
     my $close = $self->cget('-close');
-	
+
     if    ($x       < $close) { $dx = $x }
     elsif ($w - $x2 < $close) { $dx = $x2 - $w }
 
@@ -478,9 +485,9 @@ sub separator {
 
     my $move = 1;
     $move    = $args{-movable} if exists $args{-movable};
+    my $just = $args{-space} || 0;
 
-    my $f    = $self->{CONTAINER}->Frame(qw/-width 0
-					 -height 0/);
+    my $f    = $self->{CONTAINER}->Frame(-width => $just, -height => 0);
 
     my $sep  = $self->{CONTAINER}->Frame(qw/
 					 -borderwidth 5
@@ -494,6 +501,10 @@ sub separator {
     $self->_packWidget($sep);
 
     $self->_createSeparatorBindings($sep) if $move;
+
+    if ($just eq 'right' || $just eq 'bottom') {
+      # just figure out the good width.
+    }
 
     return 1;
 }
@@ -646,7 +657,8 @@ Tk::ToolBar - A toolbar widget for Perl/Tk
         use Tk::ToolBar;
 
         my $mw = new MainWindow;
-        my $tb = $mw->ToolBar(qw/-movable 1 -side top/);
+        my $tb = $mw->ToolBar(qw/-movable 1 -side top
+                                 -indicatorcolor blue/);
 
         $tb->ToolButton  (-text  => 'Button',
                           -tip   => 'tool tip',
@@ -695,8 +707,10 @@ second ToolBar. You can "un-embed" an embedded ToolBar simply by dragging it
 out. You can change the 15 pixel limit using the B<-close> option.
 
 Various icons are built into the Tk::ToolBar widget. Those icons can be used
-as images for ToolButtons (see L</SYNOPSIS>). A program called tbIconView.pl is
-bundled with this module. Run it to get a list of available images.
+as images for ToolButtons (see L</SYNOPSIS>). A demo program is bundled with
+the module that should be available under the 'User Contributed Demonstrations'
+when you run the B<widget> program. Run it to see a list of the available
+images.
 
 Tk::ToolBar attempts to use Tk::CursorControl if it's already installed on
 the system. You can further control this using the I<-cursorcontrol> option.
@@ -746,8 +760,20 @@ checks for Tk::CursorControl and uses it if present.
 
 This option indicates that you want to control how the ToolBar looks like
 and not rely on Tk::ToolBar's own judgement. The value must be either
-1 or 0. For now, the only thing this controls is the relief of ToolButtons.
-Defaults to 0.
+1 or 0. For now, the only thing this controls is the relief of ToolButtons
+and the borderwidth. Defaults to 0.
+
+=item B<-indicatorcolor>
+
+This option controls the color of the visual indicator that tells you
+whether you are close enough to an edge when dragging the ToolBar.
+Defaults to some shade of blue and green (I like it :P).
+
+=item B<-indicatorrelief>
+
+This option controls the relief of the visual indicator that tells you
+whether you are close enough to an edge when dragging the ToolBar.
+Defaults to flat.
 
 =back
 
@@ -814,23 +840,29 @@ A tooltip message can be specified via the -tip option.
 Any other options will be passed directly to the constructor
 of the Optionmenu. The Optionmenu object is returned.
 
-=item I<$ToolBar>-E<gt>B<separator>(?-movable => 0/1?)
+=item I<$ToolBar>-E<gt>B<separator>(?-movable => 0/1, -space => num?)
 
 This method inserts a separator. Separators are movable by default.
-To change that, set the -movable option to 0.
+To change that, set the -movable option to 0. If you want to add some
+space to the left of a separator (or at the top if your ToolBar is
+vertical), then you can specify the amount of space (in pixels) via
+the -space option. This can be used to "right-justify" some buttons.
 
 =back
 
 =head1 IMAGES
 
 Tk::ToolBar now comes with a set of useful images that can be used
-in your Tk programs. To view those images, run the tbIconView.pl program
-that is bundled with Tk::ToolBar.
+in your Tk programs. To view those images, run the B<widget> program
+that is bundled with Tk, scroll down to the 'User Contributed
+Demonstrations', and click on the Tk::ToolBar entry.
 
 Note that the images are created using the L<text|Photo> method. Also,
 Tk::ToolBar, upon its creation, pre-loads all of the bundled images
 into memory. This means that those images are available for use in other
-widgets in your Tk program.
+widgets in your Tk program. This also means that unless those images
+are explicitly destroyed, they will use up a small amount of memory even
+if you are not using them explicitly.
 
 As far as I know, all the bundled images are in the free domain. If that
 is not the case, then please let me know.
@@ -896,7 +928,7 @@ or just stick it somewhere in @INC where perl can find it. It's in pure Perl.
 =head1 ACKNOWLEDGEMENTS
 
 The following people have given me helpful comments and bug reports to keep me busy:
-Chris Whiting, Jack Dunnigan and Robert Brooks.
+Chris Whiting, Jack Dunnigan, Robert Brooks, Peter Lipecka and Martin Thurn.
 
 Also thanks to the various artists of the KDE team for creating those great icons,
 and to Adrian Davis for packaging them in a Tk-friendly format.
