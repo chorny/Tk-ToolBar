@@ -8,3 +8,14 @@ Revision history for Perl extension Tk::ToolBar.
 	- Added support for embedding ToolBars inside each other.
 	- Added support for Menubuttons, Labels, Entries and LabEntries.
 
+0.04  Mon May  5 17:51:47 2003
+	- Added separator() method.
+	- Implemented a visual indicator that shows where the
+	  dragged ToolBar will stick.
+	- Added "real-time" dragging so dragged ToolBar is
+	  completely visible during dragging.
+	- Now, the entire dimension of the dragged ToolBar is used
+	  to calculate proximity to an edge (rather than just mouse
+	  position).
+	- Added tooltips via Tk::Balloon.
+	
