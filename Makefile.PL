@@ -9,9 +9,11 @@ WriteMakefile(
 	       (ABSTRACT_FROM  => 'ToolBar.pm',
 		AUTHOR         => 'Ala Qumsieh <aqumsieh@cpan.org>') : ()),
 	      PM               => {
-				   'tbIconView.pl' => ($] >= 5.005 ?
-						       '$(INST_ARCHLIB)' :
-						       '$(INST_LIB)') .
+				   'ToolBar.pm'      => '$(INST_LIB)/Tk/ToolBar.pm',
+				   'tbIconView.pl'   => ($] >= 5.005 ?
+							 '$(INST_ARCHLIB)' :
+							 '$(INST_LIB)') .
 				   '/Tk/demos/widtrib/tbIconView.pl',
+				   'ToolBar/tkIcons' => '$(INST_LIB)/Tk/ToolBar/tkIcons',
 				  },
 	     );
