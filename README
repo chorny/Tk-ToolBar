@@ -8,55 +8,99 @@ SYNOPSIS
             my $mw = new MainWindow;
             my $tb = $mw->ToolBar(qw/-movable 1 -side top/);
 
-            $tb->ToolButton(-text => 'test');
-            $tb->ToolButton(-text => 'Me');
+            $tb->ToolButton(-text  => 'Button',
+                            -command => sub { print "hi\n" });
+            $tb->Label     (-text  => 'A Label');
+            $tb->LabEntry  (-label => 'A LabEntry',
+                            -labelPack => [-side => "left", -anchor => "w"]);
 
 DESCRIPTION
     This module implements a dockable toolbar. It is in the same spirit as
     the "short-cut" toolbars found in most major applications, such as most
-    web browsers and text editors (where you find the "back" or "save"
-    buttons).
+    web browsers and text editors (where you find the "back" or "save" and
+    other shortcut buttons).
 
-    Buuttons of any type (regular, check, radio) can be packed inside this
-    widget. Moreover, the ToolBar itself can be made dockable, such that it
-    can be dragged to any edge of your window.
+    Buuttons of any type (regular, menu, check, radio) can be created inside
+    this widget. You can also create Label, Entry and LabEntry widgets.
+    Moreover, the ToolBar itself can be made dockable, such that it can be
+    dragged to any edge of your window. Multiple ToolBars are embeddable
+    inside each other.
+
+    If you drag a ToolBar to within 15 pixels of an edge, it will stick to
+    that edge. If, the ToolBar is further than 15 pixels away from an edge,
+    but you release it over another ToolBar widget, then it will be embedded
+    inside the second ToolBar. You can "un-embed" an embedded ToolBar simply
+    by dragging it out. You can change the 15 pixel limit using the -close
+    option.
 
     The ToolBar is supposed to be created as a child of a Toplevel
-    (MainWindow is a Toplevel widget). You are free to experiment otherwise,
-    but expect the unexpected :-)
+    (MainWindow is a Toplevel widget) or a Frame. You are free to experiment
+    otherwise, but expect the unexpected :-)
 
 WIDGET-SPECIFIC OPTIONS
     The ToolBar widget takes the following arguments:
 
     -side
-        This option tells the ToolBar what edge to stick to. Can be one of
-        'top', 'bottom', 'left' or 'right'. Defaults to 'top'. This option
-        can be set only during object creation.
+        This option tells the ToolBar what edge to *initially* stick to. Can
+        be one of 'top', 'bottom', 'left' or 'right'. Defaults to 'top'.
+        This option can be set only during object creation. Default is
+        'top'.
 
     -movable
         This option specifies whether the ToolBar is dockable or not. A
         dockable ToolBar can be dragged around with the mouse to any edge of
-        the window. Default is 1.
+        the window, subject to the sticky constraints defined by *-sticky*.
+        Default is 1.
 
     -close
-        This options specifies, in pixels, how close we have to drag the
-        ToolBar an edge for the ToolBar to stick to it.
+        This option specifies, in pixels, how close we have to drag the
+        ToolBar an edge for the ToolBar to stick to it. Default is 15.
+
+    -sticky
+        This option specifies which sides the toolbar is allowed to stick
+        to. The value must be a string of the following characters 'nsew'. A
+        string of 'ns' means that the ToolBar can only stick to the north
+        (top) or south (bottom) sides. Defaults to 'nsew'. This option can
+        be set only during object creation.
 
 WIDGET METHODS
+    The following methods are used to create widgets that are placed inside
+    the ToolBar. Widgets are ordered in the same order they are created.
+
     *$ToolBar*->ToolButton(?-type => *buttonType*,? *options*)
-        This method creates a new button inside the ToolBar. The buttons are
-        ordered in the same order they're created. The *-type* option can be
-        used to specify what kind of button to create. Can be on of
-        'Button', 'Checkbutton', or 'Radiobutton'. Any other options will be
-        passed directly to the constructor of the button. The button object
+        This method creates a new Button inside the ToolBar. The *-type*
+        option can be used to specify what kind of button to create. Can be
+        on of 'Button', 'Checkbutton', 'Menubutton', or 'Radiobutton'. Any
+        other options will be passed directly to the constructor of the
+        button. The Button object is returned.
+
+    *$ToolBar*->ToolLabel(*options*)
+        This method creates a new Label inside the ToolBar. Any options will
+        be passed directly to the constructor of the label. The Label object
         is returned.
+
+    *$ToolBar*->ToolEntry(*options*)
+        This method creates a new Entry inside the ToolBar. Any options will
+        be passed directly to the constructor of the entry. The Entry object
+        is returned.
+
+    *$ToolBar*->ToolLabEntry(*options*)
+        This method creates a new LabEntry inside the ToolBar. Any options
+        will be passed directly to the constructor of the labentry. The
+        LabEntry object is returned. In horizontal ToolBars, the label of
+        the LabEntry widget will be packed to the left of the entry. On
+        vertical ToolBars, the label will be packed on top of the entry.
 
 BUGS
     Not really a bug, but a feature ;-) The ToolBar widget assumes that you
-    use *pack* in your main window. Actually, it will *pack* itself in your
-    window. If you are using another geometry manager, then you *MIGHT* get
+    use *pack* in its parent. Actually, it will *pack()* itself inside its
+    parent. If you are using another geometry manager, then you *MIGHT* get
     some weird behaviour. I have tested it very quickly, and found no
     surprises, but let me know if you do.
+
+TODO
+    o   I've implemented everything I wanted to implement. If you want more,
+        send me requests.
 
 INSTALLATION
     Either the usual:
@@ -67,6 +111,11 @@ INSTALLATION
 
     or just stick it somewhere in @INC where perl can find it. It's in pure
     Perl.
+
+ACKNOWLEDGEMENTS
+    Many thanks go to Chris Whiting who has tested this widget extensively
+    and gave valuable comments and suggestions. Thanks are also due to Jack
+    Dunnigan for showing me the light; Jack, you da man!
 
 AUTHOR
     Ala Qumsieh *aqumsieh@cpan.org*

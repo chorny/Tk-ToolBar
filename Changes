@@ -4,3 +4,7 @@ Revision history for Perl extension Tk::ToolBar.
 	- original version; created by h2xs 1.21 with options
 		-AX -n Tk::ToolBar
 
+0.03  Sun Apr 13 14:26:07 2003
+	- Added support for embedding ToolBars inside each other.
+	- Added support for Menubuttons, Labels, Entries and LabEntries.
+
