@@ -17,6 +17,21 @@ SYNOPSIS
                               -labelPack => [-side => "left",
                                              -anchor => "w"]);
 
+            my $tb2 = $mw->ToolBar;
+            $tb2->ToolButton(-image   => 'navback22',
+                             -tip     => 'back',
+                             -command => \&back);
+            $tb2->ToolButton(-image   => 'navforward22',
+                             -tip     => 'forward',
+                             -command => \&forward);
+            $tb2->separator;
+            $tb2->ToolButton(-image   => 'navhome22',
+                             -tip     => 'home',
+                             -command => \&home);
+            $tb2->ToolButton(-image   => 'actreload22',
+                             -tip     => 'reload',
+                             -command => \&reload);
+
             MainLoop;
 
 DESCRIPTION
@@ -40,6 +55,11 @@ DESCRIPTION
     inside the second ToolBar. You can "un-embed" an embedded ToolBar simply
     by dragging it out. You can change the 15 pixel limit using the -close
     option.
+
+    Various icons are built into the Tk::ToolBar widget. Those icons can be
+    used as images for ToolButtons (see the SYNOPSIS entry elsewhere in this
+    document). A program called tbIconView.pl is bundled with this module.
+    Run it to get a list of available images.
 
     Tk::ToolBar attempts to use Tk::CursorControl if it's already installed
     on the system. You can further control this using the *-cursorcontrol*
@@ -81,13 +101,20 @@ WIDGET-SPECIFIC OPTIONS
         default is 1 which checks for Tk::CursorControl and uses it if
         present.
 
+    -mystyle
+        This option indicates that you want to control how the ToolBar looks
+        like and not rely on Tk::ToolBar's own judgement. The value must be
+        either 1 or 0. For now, the only thing this controls is the relief
+        of ToolButtons. Defaults to 0.
+
 WIDGET METHODS
     The following methods are used to create widgets that are placed inside
     the ToolBar. Widgets are ordered in the same order they are created,
     left to right.
 
     For all widgets, except Labels, a tooltip can be specified via the -tip
-    option.
+    option. An image can be specified using the -image option for Button-
+    and Label-based widgets.
 
     *$ToolBar*->ToolButton(?-type => *buttonType*,? *options*)
     *$ToolBar*->Button(?-type => *buttonType*,? *options*)
@@ -124,8 +151,29 @@ WIDGET METHODS
         LabEntry widget will be packed to the left of the entry. On vertical
         ToolBars, the label will be packed on top of the entry.
 
-    *$ToolBar*->separator
-        This method inserts a separator. Separators are movable.
+    *$ToolBar*->ToolOptionmenu(*options*)
+    *$ToolBar*->Optionmenu(*options*)
+        This method creates a new Optionmenu inside the ToolBar. A tooltip
+        message can be specified via the -tip option. Any other options will
+        be passed directly to the constructor of the Optionmenu. The
+        Optionmenu object is returned.
+
+    *$ToolBar*->separator(?-movable => 0/1?)
+        This method inserts a separator. Separators are movable by default.
+        To change that, set the -movable option to 0.
+
+IMAGES
+    Tk::ToolBar now comes with a set of useful images that can be used in
+    your Tk programs. To view those images, run the tbIconView.pl program
+    that is bundled with Tk::ToolBar.
+
+    Note that the images are created using the text method. Also,
+    Tk::ToolBar, upon its creation, pre-loads all of the bundled images into
+    memory. This means that those images are available for use in other
+    widgets in your Tk program.
+
+    As far as I know, all the bundled images are in the free domain. If that
+    is not the case, then please let me know.
 
 BUGS
     Not really a bug, but a feature ;-) The ToolBar widget assumes that you
@@ -134,6 +182,12 @@ BUGS
     some weird behaviour. I have tested it very quickly, and found no
     surprises, but let me know if you do.
 
+    Another thing I noticed is that on slower window managers dragging a
+    ToolBar might not go very smoothly, and you can "drop" the ToolBar
+    midway through dragging it. I noticed this on Solaris 7 and 8, running
+    any of OpenLook, CDE or GNOME2 window managers. I would appreciate any
+    reports on different platforms.
+
 TODO
     I have implemented everything I wanted, and then some. Here are things
     that were requested, but are not implemented yet. If you want more, send
@@ -141,9 +195,8 @@ TODO
 
     o Allow buttons to be "tied" to menu items. Somewhat taken care of with
     the -accelerator method for buttons.
-    o Include some built-in pixmaps for some of the more common ToolButtons,
-    like "Save", "New", "Open", etc ..
     o Implement Drag-n-Drop to be able to move Tool* widgets interactively.
+    Do we really want this?
 PREREQUISITES
     Tk::ToolBar uses only core pTk modules. So you don't need any special
     prerequisites. But, if Tk::CursorControl is installed on your system,
@@ -172,6 +225,10 @@ INSTALLATION
 ACKNOWLEDGEMENTS
     The following people have given me helpful comments and bug reports to
     keep me busy: Chris Whiting, Jack Dunnigan and Robert Brooks.
+
+    Also thanks to the various artists of the KDE team for creating those
+    great icons, and to Adrian Davis for packaging them in a Tk-friendly
+    format.
 
 AUTHOR
     Ala Qumsieh *aqumsieh@cpan.org*

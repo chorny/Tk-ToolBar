@@ -1,3 +1,4 @@
+
 package Tk::ToolBar;
 
 use strict;
@@ -8,11 +9,12 @@ use base qw/Tk::Frame/;
 use Tk::widgets qw(Frame);
 
 use Carp;
+use POSIX qw/ceil/;
 
 Construct Tk::Widget 'ToolBar';
 
 use vars qw/$VERSION/;
-$VERSION = 0.05;
+$VERSION = 0.06;
 
 my $edgeH = 24;
 my $edgeW = 3;
@@ -29,13 +31,34 @@ my @allWidgets = ();
 my %packIn;
 my %containers;
 my %isDummy;
-my ($ox, $oy);
 
 1;
 
 sub ClassInit {
     my ($class, $mw) = @_;
     $class->SUPER::ClassInit($mw);
+
+    # load the images.
+    my $imageFile = Tk->findINC('ToolBar/tkIcons');
+
+    if (defined $imageFile) {
+	local *F;
+	open F, $imageFile;
+
+	while (<F>) {
+	    chomp;
+	    my ($n, $d) = (split /:/)[0, 4];
+
+	    $mw->Photo($n, -data => $d);
+	}
+	close F;
+    } else {
+	carp <<EOW;
+WARNING: can not find tkIcons. Your installation of Tk::ToolBar is broken.
+         No icons will be loaded.
+EOW
+;
+    }
 }
 
 sub Populate {
@@ -46,6 +69,7 @@ sub Populate {
     $self->{SIDE}   = exists $args->{-side}          ? delete $args->{-side}          : 'top';
     $self->{STICKY} = exists $args->{-sticky}        ? delete $args->{-sticky}        : 'nsew';
     $self->{USECC}  = exists $args->{-cursorcontrol} ? delete $args->{-cursorcontrol} : 1;
+    $self->{STYLE}  = exists $args->{-mystyle}       ? delete $args->{-mystyle}       : 0;
 
     unless ($self->{STICKY} =~ /$sideToSticky{$self->{SIDE}}/) {
 	croak "can't place '$self->{STICKY}' toolbar on '$self->{SIDE}' side";
@@ -64,15 +88,15 @@ sub Populate {
     $self->_packEdge($edge);
 
     $self->ConfigSpecs(
-		       -movable => [qw/METHOD movable Movable 1/],
-		       -close   => [qw/METHOD close   Close   15/],
+		       -movable          => [qw/METHOD  movable          Movable             1/],
+		       -close            => [qw/PASSIVE close            Close              15/],
+		       -activebackground => [qw/METHOD  activebackground ActiveBackground/, Tk::ACTIVE_BG],
 		      );
 
     push @allWidgets => $self;
 
     $containers{$self->{CONTAINER}} = $self;
 
-    $self->{HIGHLIGHT} = $self->{MW}->Frame(-bg => 'white');
     $self->{BALLOON}   = $self->{MW}->Balloon;
 
     # check for Tk::CursorControl
@@ -85,6 +109,15 @@ sub Populate {
 	    $self->{CC} = $self->{MW}->CursorControl;
 	}
     }
+}
+
+sub activebackground {
+    my ($self, $c) = @_;
+
+    return unless $c; # ignore falses.
+
+    $self->{ACTIVE_BG} = $c;
+    ref($_) ne 'Tk::ToolBar' && $_->configure(-activebackground => $c) for @allWidgets;
 }
 
 sub _packSelf {
@@ -152,14 +185,6 @@ sub _packEdge {
 	     $nopad => 0,  -expand => 0);
 }
 
-sub close {
-    my ($self, $value) = @_;
-
-    $self->{CLOSE} = $value if defined($value) && $value > 0;
-
-    return $self->{CLOSE};
-}
-
 sub movable {
     my ($self, $value) = @_;
 
@@ -180,63 +205,66 @@ sub movable {
 }
 
 sub _enableEdge {
-    my ($self, $e) = @_;
+  my ($self, $e) = @_;
 
-    $e->bind('<1>' => sub { $self->{CC}->confine($self->{MW}) })
-	if defined $self->{CC};
+  my $hilte = $self->{MW}->Frame(-bg => 'white');
+  my $dummy = $self->{MW}->Frame(
+				 qw/
+				 -borderwidth 2
+				 -relief ridge
+				 /);
+  my $drag  = 0;
 
-    $e->bind('<B1-Motion>' => sub {
-		 $self->{ISMOVED} = 1;
+  $e->bind('<B1-Motion>' => sub {
+	     my ($x, $y) = ($self->pointerx - $self->{MW}->rootx - ceil($e->width /2) - $e->x,
+			    $self->pointery - $self->{MW}->rooty - ceil($e->height/2) - $e->y);
 
-		 my ($x, $y) = ($self->pointerx - $self->{MW}->rootx,
-				$self->pointery - $self->{MW}->rooty);
+	     $dummy->place('-x' => $x, '-y' => $y);
 
-		 if (defined $self->{DUMMY}) {
-		     $self->{DUMMY}->place('-x' => $x,
-					   '-y' => $y,
-					  );
-		 } else {
-		     $self->{DUMMY} = $self->{MW}->Frame(
-							 qw/
-							 -borderwidth 2
-							 -relief ridge
-							 /,
-							   )->place('-x' => $x,
-								    '-y' => $y,
-								    );
-		     $self->{DUMMY}->raise;
-		     $self->{CPACKINFO} = [$self->{CONTAINER}->packInfo];
-		     $self->{SPACKINFO} = $self->manager ? [$self->packInfo] : undef;
-		     $self->{CONTAINER}->packForget;
-		     $self->packForget;
+	     unless ($drag) {
+	       $drag = 1;
+	       $dummy->raise;
+	       $self->packForget;
 
-		     $self->{CONTAINER}->pack(-in => $self->{DUMMY});
-		     $self->{CONTAINER}->raise;
-		     ref($_) eq 'Tk::Frame' && $_->raise for $self->{CONTAINER}->packSlaves;
-		 }
+	       $self->{CONTAINER}->pack(-in => $dummy);
+	       $self->{CONTAINER}->raise;
+	       ref($_) eq 'Tk::Frame' && $_->raise for $self->{CONTAINER}->packSlaves;
+	     }
 
-		 $self->{HIGHLIGHT}->packForget;
-		 return unless $self->_whereAmI;
+	     $hilte->placeForget;
+	     return unless my $newSide = $self->_whereAmI($x, $y);
 
-		 # highlight the close edge.
-		 my ($op, $pp) = $self->{SIDE} =~ /top|bottom/ ?
-		     ([qw/-height 5/], [qw/-fill x/]) : ([qw/-width 5/], [qw/-fill y/]);
+	     # highlight the close edge.
+	     my ($op, $pp);
+	     if ($newSide =~ /top/) {
+	       $op = [qw/-height 5/];
+	       $pp = [qw/-relx 0 -relwidth 1 -y 0/];
+	     } elsif ($newSide =~ /bottom/) {
+	       $op = [qw/-height 5/];
+	       $pp = [qw/-relx 0 -relwidth 1 -y -5 -rely 1/];
+	     } elsif ($newSide =~ /left/) {
+	       $op = [qw/-width 5/];
+	       $pp = [qw/-x 0 -relheight 1 -y 0/];
+	     } elsif ($newSide =~ /right/) {
+	       $op = [qw/-width 5/];
+	       $pp = [qw/-x -5 -relx 1 -relheight 1 -y 0/];
+	     }
 
-		 $self->{HIGHLIGHT}->configure(@$op);
-		 $self->{HIGHLIGHT}->pack(-side => $self->{SIDE},
-					  @$pp);
-	     });
+	     $hilte->configure(@$op);
+	     $hilte->place(@$pp);
+	     $hilte->raise;
+	   });
 
     $e->bind('<ButtonRelease-1>' => sub {
-	return unless $self->{ISMOVED};
+	return unless $drag;
 
-	$self->{ISMOVED} = 0;
-	$self->{DUMMY}->destroy;
-	$self->{DUMMY}   = undef;
+	$drag = 0;
+	$dummy->placeForget;
 	$self->{CC}->free($self->{MW}) if defined $self->{CC};
 
-	return unless $self->_whereAmI(1);
-	$self->{HIGHLIGHT}->packForget;
+	#return unless $self->_whereAmI(1);
+	$self->_whereAmI(1);
+	$hilte->placeForget;
 
 	# repack everything now.
 	my @allSlaves = grep {$_ ne $e} $self->{CONTAINER}->packSlaves;
@@ -250,12 +278,18 @@ sub _enableEdge {
 
 sub _whereAmI {
     my $self = shift;
-    my $flag = shift;
 
-    my $e       = $self->_edge;
-    my $p       = $e->parent;
-    my ($x, $y) = ($self->pointerx - $self->{MW}->rootx,
-		   $self->pointery - $self->{MW}->rooty);
+    my $flag = 0;
+    my ($x, $y);
+
+    if (@_ == 1) {
+	$flag = shift;
+	my $e    = $self->_edge;
+	($x, $y) = ($self->pointerx - $self->{MW}->rootx - ceil($e->width /2) - $e->x,
+		    $self->pointery - $self->{MW}->rooty - ceil($e->height/2) - $e->y);
+    } else {
+	($x, $y) = @_;
+    }
 
     my $x2 = $x + $self->{CONTAINER}->width;
     my $y2 = $y + $self->{CONTAINER}->height;
@@ -277,15 +311,13 @@ sub _whereAmI {
     my $dx = 0;
     my $dy = 0;
 
-    my $close = $self->{CLOSE};
+    my $close = $self->cget('-close');
 	
     if    ($x       < $close) { $dx = $x }
     elsif ($w - $x2 < $close) { $dx = $x2 - $w }
-    #elsif ($w - $x < $close) { $dx = $x - $w }
 
     if    ($y       < $close) { $dy = $y }
     elsif ($h - $y2 < $close) { $dy = $y2 - $h }
-    #elsif ($h - $y < $close) { $dy = $y - $h }
 
     $packIn       = '';
     if ($dx || $dy) {
@@ -306,7 +338,7 @@ sub _whereAmI {
 	# make sure we're stickable on that side.
 	return undef unless $self->{STICKY} =~ /$sideToSticky{$newSide}/;
 
-	$self->{SIDE} = $newSide;
+	$self->{SIDE} = $newSide if $flag;
 	return $newSide;
     } elsif ($flag) {
 	# check for overlaps.
@@ -324,25 +356,12 @@ sub _whereAmI {
 	    }
 	}
 
-	unless ($packIn) {
-	    # Repack everything the way it was.
-	    $self->_restoreMe;
-	    return undef;
-	}
-
-	$self->{SIDE} = $packIn->{SIDE};
+	$self->{SIDE} = $packIn->{SIDE} if $packIn;
     } else {
 	return undef;
     }
 
     return 1;
-}
-
-sub _restoreMe {
-    my $self = shift;
-
-    $self->pack(@{$self->{SPACKINFO}}) if defined $self->{SPACKINFO};
-    $self->{CONTAINER}->pack(@{$self->{CPACKINFO}});
 }
 
 sub _disableEdge {
@@ -374,10 +393,14 @@ sub ToolButton {
     my $x = delete $args{-accelerator} || '';
 
     my $b = $self->{CONTAINER}->$type(%args,
-				      -relief  => 'flat',
-				      );
+				      $self->{STYLE} ? () : (
+							     -relief      => 'flat',
+							     -borderwidth => 1,
+							    ),
+				     );
 
     $self->_createButtonBindings($b);
+    $self->_configureWidget     ($b);
 
     push @{$self->{WIDGETS}} => $b;
     $self->_packWidget($b);
@@ -434,8 +457,27 @@ sub ToolLabEntry {
     return $l;
 }
 
+sub ToolOptionmenu {
+    my $self = shift;
+    my %args = @_;
+
+    my $m = delete $args{-tip} || '';
+    my $l = $self->{CONTAINER}->Optionmenu(%args);
+
+    push @{$self->{WIDGETS}} => $l;
+
+    $self->_packWidget($l);
+    $self->{BALLOON}->attach($b, -balloonmsg => $m) if $m;
+
+    return $l;
+}
+
 sub separator {
     my $self = shift;
+    my %args = @_;
+
+    my $move = 1;
+    $move    = $args{-movable} if exists $args{-movable};
 
     my $f    = $self->{CONTAINER}->Frame(qw/-width 0
 					 -height 0/);
@@ -451,7 +493,7 @@ sub separator {
     $self->{SEPARATORS}{$sep} = $f;
     $self->_packWidget($sep);
 
-    $self->_createSeparatorBindings($sep);
+    $self->_createSeparatorBindings($sep) if $move;
 
     return 1;
 }
@@ -533,49 +575,60 @@ sub _packWidget_old {
     $b->pack(-side => $side, $pad => 4, $nopad => 0, @extra);
 }
 
+sub _configureWidget {
+    my ($self, $w) = @_;
+
+    $w->configure(-activebackground => $self->{ACTIVE_BG});
+}
+
 sub _createButtonBindings {
     my ($self, $b) = @_;
 
-    $b->bind('<Enter>' => sub { $b->configure(qw/-relief raised/) });
-    $b->bind('<Leave>' => sub { $b->configure(qw/-relief flat/)   });
+    my $bg = $b->cget('-bg');
+
+    $b->bind('<Enter>' => [$b, 'configure', qw/-relief raised/]);
+    $b->bind('<Leave>' => [$b, 'configure', qw/-relief flat/]);
 }
 
 sub _createSeparatorBindings {
-    my ($self, $s) = @_;
+  my ($self, $s) = @_;
 
-    $s->bind('<1>'         => sub {
-	$ox = $s->XEvent->x;
-	$oy = $s->XEvent->y;
-    });
+  my ($ox, $oy);
 
-    $s->bind('<B1-Motion>' => sub {
-	my $x = $s->XEvent->x;
-	my $y = $s->XEvent->y;
+  $s->bind('<1>'         => sub {
+	     $ox = $s->XEvent->x;
+	     $oy = $s->XEvent->y;
+	   });
 
-	my $f = $self->{SEPARATORS}{$s};
+  $s->bind('<B1-Motion>' => sub {
+	     my $x = $s->XEvent->x;
+	     my $y = $s->XEvent->y;
 
-	if ($self->{SIDE} =~ /top|bottom/) {
-	    my $dx = $x - $ox;
+	     my $f = $self->{SEPARATORS}{$s};
 
-	    my $w  = $f->width + $dx;
-	    $w     = 0 if $w < 0;
+	     if ($self->{SIDE} =~ /top|bottom/) {
+	       my $dx = $x - $ox;
 
-	    $f->GeometryRequest($w, $f->height);
-	} else {
-	    my $dy = $y - $oy;
+	       my $w  = $f->width + $dx;
+	       $w     = 0 if $w < 0;
 
-	    my $h  = $f->height + $dy;
-	    $h     = 0 if $h < 0;
+	       $f->GeometryRequest($w, $f->height);
+	     } else {
+	       my $dy = $y - $oy;
 
-	    $f->GeometryRequest($f->width, $h);
-	}
-    });
+	       my $h  = $f->height + $dy;
+	       $h     = 0 if $h < 0;
+
+	       $f->GeometryRequest($f->width, $h);
+	     }
+	   });
 }
 
-sub Button   { goto &ToolButton }
-sub Label    { goto &ToolLabel }
-sub Entry    { goto &ToolEntry }
-sub LabEntry { goto &ToolLabEntry }
+sub Button     { goto &ToolButton     }
+sub Label      { goto &ToolLabel      }
+sub Entry      { goto &ToolEntry      }
+sub LabEntry   { goto &ToolLabEntry   }
+sub Optionmenu { goto &ToolOptionmenu }
 
 __END__
 
@@ -604,6 +657,21 @@ Tk::ToolBar - A toolbar widget for Perl/Tk
                           -labelPack => [-side => "left",
                                          -anchor => "w"]);
 
+        my $tb2 = $mw->ToolBar;
+	$tb2->ToolButton(-image   => 'navback22',
+			 -tip     => 'back',
+			 -command => \&back);
+        $tb2->ToolButton(-image   => 'navforward22',
+			 -tip     => 'forward',
+			 -command => \&forward);
+        $tb2->separator;
+        $tb2->ToolButton(-image   => 'navhome22',
+			 -tip     => 'home',
+			 -command => \&home);
+        $tb2->ToolButton(-image   => 'actreload22',
+			 -tip     => 'reload',
+			 -command => \&reload);
+
         MainLoop;
 
 =head1 DESCRIPTION
@@ -625,6 +693,10 @@ edge. If the ToolBar is further than 15 pixels away from an edge, but you
 release it over another ToolBar widget, then it will be embedded inside the
 second ToolBar. You can "un-embed" an embedded ToolBar simply by dragging it
 out. You can change the 15 pixel limit using the B<-close> option.
+
+Various icons are built into the Tk::ToolBar widget. Those icons can be used
+as images for ToolButtons (see L</SYNOPSIS>). A program called tbIconView.pl is
+bundled with this module. Run it to get a list of available images.
 
 Tk::ToolBar attempts to use Tk::CursorControl if it's already installed on
 the system. You can further control this using the I<-cursorcontrol> option.
@@ -670,6 +742,13 @@ This option specifies whether to use Tk::CursorControl to confine the cursor
 during dragging. The value must be either 1 or 0. The default is 1 which
 checks for Tk::CursorControl and uses it if present.
 
+=item B<-mystyle>
+
+This option indicates that you want to control how the ToolBar looks like
+and not rely on Tk::ToolBar's own judgement. The value must be either
+1 or 0. For now, the only thing this controls is the relief of ToolButtons.
+Defaults to 0.
+
 =back
 
 =head1 WIDGET METHODS
@@ -678,6 +757,7 @@ The following methods are used to create widgets that are placed inside
 the ToolBar. Widgets are ordered in the same order they are created, left to right.
 
 For all widgets, except Labels, a tooltip can be specified via the B<-tip> option.
+An image can be specified using the -image option for Button- and Label-based widgets.
 
 =over 4
 
@@ -725,11 +805,35 @@ In horizontal ToolBars, the label of the LabEntry widget
 will be packed to the left of the entry. On vertical
 ToolBars, the label will be packed on top of the entry.
 
-=item I<$ToolBar>-E<gt>B<separator>
+=item I<$ToolBar>-E<gt>B<ToolOptionmenu>(I<options>)
 
-This method inserts a separator. Separators are movable.
+=item I<$ToolBar>-E<gt>B<Optionmenu>(I<options>)
+
+This method creates a new Optionmenu inside the ToolBar.
+A tooltip message can be specified via the -tip option.
+Any other options will be passed directly to the constructor
+of the Optionmenu. The Optionmenu object is returned.
+
+=item I<$ToolBar>-E<gt>B<separator>(?-movable => 0/1?)
+
+This method inserts a separator. Separators are movable by default.
+To change that, set the -movable option to 0.
 
 =back
+
+=head1 IMAGES
+
+Tk::ToolBar now comes with a set of useful images that can be used
+in your Tk programs. To view those images, run the tbIconView.pl program
+that is bundled with Tk::ToolBar.
+
+Note that the images are created using the L<text|Photo> method. Also,
+Tk::ToolBar, upon its creation, pre-loads all of the bundled images
+into memory. This means that those images are available for use in other
+widgets in your Tk program.
+
+As far as I know, all the bundled images are in the free domain. If that
+is not the case, then please let me know.
 
 =head1 BUGS
 
@@ -740,6 +844,11 @@ another geometry manager, then you I<MIGHT> get some weird behaviour.
 I have tested it very quickly, and found no surprises, but let me know
 if you do.
 
+Another thing I noticed is that on slower window managers dragging a
+ToolBar might not go very smoothly, and you can "drop" the ToolBar
+midway through dragging it. I noticed this on Solaris 7 and 8, running
+any of OpenLook, CDE or GNOME2 window managers. I would appreciate any
+reports on different platforms.
 
 =head1 TODO
 
@@ -752,11 +861,8 @@ If you want more, send me requests.
 =item o Allow buttons to be "tied" to menu items. Somewhat taken care of
 with the -accelerator method for buttons.
 
-=item o Include some built-in pixmaps for some of the more common ToolButtons,
-like "Save", "New", "Open", etc ..
-
 =item o Implement Drag-n-Drop to be able to move Tool* widgets interactively.
-
+Do we really want this?
 
 =back
 
@@ -792,6 +898,9 @@ or just stick it somewhere in @INC where perl can find it. It's in pure Perl.
 The following people have given me helpful comments and bug reports to keep me busy:
 Chris Whiting, Jack Dunnigan and Robert Brooks.
 
+Also thanks to the various artists of the KDE team for creating those great icons,
+and to Adrian Davis for packaging them in a Tk-friendly format.
+
 =head1 AUTHOR
 
 Ala Qumsieh I<aqumsieh@cpan.org>
@@ -801,4 +910,3 @@ Ala Qumsieh I<aqumsieh@cpan.org>
 This module is distributed under the same terms as Perl itself.
 
 =cut
-

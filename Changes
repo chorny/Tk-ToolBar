@@ -24,3 +24,7 @@ Revision history for Perl extension Tk::ToolBar.
 	- Added '-accelerator' option to ToolButtons to bind
 	  for short-cuts.
 	- Added support for Tk::CursorControl, if installed.
+
+0.06  Wed Jun 25 15:46:31 PDT 2003
+	- Added tk-style icons.
+	- Misc. bug fixes.
