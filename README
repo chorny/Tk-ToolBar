@@ -41,6 +41,10 @@ DESCRIPTION
     by dragging it out. You can change the 15 pixel limit using the -close
     option.
 
+    Tk::ToolBar attempts to use Tk::CursorControl if it's already installed
+    on the system. You can further control this using the *-cursorcontrol*
+    option. See the PREREQUISITES entry elsewhere in this document.
+
     The ToolBar is supposed to be created as a child of a Toplevel
     (MainWindow is a Toplevel widget) or a Frame. You are free to experiment
     otherwise, but expect the unexpected :-)
@@ -71,6 +75,12 @@ WIDGET-SPECIFIC OPTIONS
         (top) or south (bottom) sides. Defaults to 'nsew'. This option can
         be set only during object creation.
 
+    -cursorcontrol
+        This option specifies whether to use Tk::CursorControl to confine
+        the cursor during dragging. The value must be either 1 or 0. The
+        default is 1 which checks for Tk::CursorControl and uses it if
+        present.
+
 WIDGET METHODS
     The following methods are used to create widgets that are placed inside
     the ToolBar. Widgets are ordered in the same order they are created,
@@ -83,10 +93,14 @@ WIDGET METHODS
     *$ToolBar*->Button(?-type => *buttonType*,? *options*)
         This method creates a new Button inside the ToolBar. The *-type*
         option can be used to specify what kind of button to create. Can be
-        on of 'Button', 'Checkbutton', 'Menubutton', or 'Radiobutton'. A
-        tooltip message can be specified via the -tip option. Any other
-        options will be passed directly to the constructor of the button.
-        The Button object is returned.
+        one of 'Button', 'Checkbutton', 'Menubutton', or 'Radiobutton'. A
+        tooltip message can be specified via the -tip option. An accelerator
+        binding can be specified using the -accelerator option. The value of
+        this option is any legal binding sequence as defined in the bind
+        manpage. For example, "-accelerator => '<f>'" will invoke the button
+        when the 'f' key is pressed. Any other options will be passed
+        directly to the constructor of the button. The Button object is
+        returned.
 
     *$ToolBar*->ToolLabel(*options*)
     *$ToolBar*->Label(*options*)
@@ -111,7 +125,7 @@ WIDGET METHODS
         ToolBars, the label will be packed on top of the entry.
 
     *$ToolBar*->separator
-        This method inserts a separator.
+        This method inserts a separator. Separators are movable.
 
 BUGS
     Not really a bug, but a feature ;-) The ToolBar widget assumes that you
@@ -125,14 +139,25 @@ TODO
     that were requested, but are not implemented yet. If you want more, send
     me requests.
 
-    o   Allow buttons to be "tied" to menu items.
+    o Allow buttons to be "tied" to menu items. Somewhat taken care of with
+    the -accelerator method for buttons.
+    o Include some built-in pixmaps for some of the more common ToolButtons,
+    like "Save", "New", "Open", etc ..
+    o Implement Drag-n-Drop to be able to move Tool* widgets interactively.
+PREREQUISITES
+    Tk::ToolBar uses only core pTk modules. So you don't need any special
+    prerequisites. But, if Tk::CursorControl is installed on your system,
+    then Tk::ToolBar will use it to confine the cursor to your window when
+    dragging ToolBars (unless you tell it not to).
 
-    o   Include some built-in pixmaps for some of the more common
-        ToolButtons, like "Save", "New", "Open", etc ..
+    Note also that Tk::CursorControl is defined as a prerequisite in
+    Makefile.PL. So, during installation you might get a warning saying:
 
-    o   Allow movable and fixed separators.
+    "Warning: prerequisite Tk::CursorControl failed to load ..."
 
-    o   Constrain cursor within Toplevel window.
+    if you don't have it installed. You can ignore this warning if you don't
+    want to install Tk::CursorControl. Tk::ToolBar will continue to work
+    properly.
 
 INSTALLATION
     Either the usual:

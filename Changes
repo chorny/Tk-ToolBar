@@ -19,3 +19,8 @@ Revision history for Perl extension Tk::ToolBar.
 	  position).
 	- Added tooltips via Tk::Balloon.
 	
+0.05  Tue Jun  3 11:38:25 2003
+	- Made separators movable.
+	- Added '-accelerator' option to ToolButtons to bind
+	  for short-cuts.
+	- Added support for Tk::CursorControl, if installed.

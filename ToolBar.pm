@@ -12,9 +12,9 @@ use Carp;
 Construct Tk::Widget 'ToolBar';
 
 use vars qw/$VERSION/;
-$VERSION = 0.04;
+$VERSION = 0.05;
 
-my $edgeH = 32;
+my $edgeH = 24;
 my $edgeW = 3;
 
 my %sideToSticky = qw(
@@ -28,6 +28,8 @@ my $packIn     = '';
 my @allWidgets = ();
 my %packIn;
 my %containers;
+my %isDummy;
+my ($ox, $oy);
 
 1;
 
@@ -41,8 +43,9 @@ sub Populate {
 
     $self->SUPER::Populate($args);
     $self->{MW}     = $self->parent;
-    $self->{SIDE}   = exists $args->{-side}   ? delete $args->{-side}   : 'top';
-    $self->{STICKY} = exists $args->{-sticky} ? delete $args->{-sticky} : 'nsew';
+    $self->{SIDE}   = exists $args->{-side}          ? delete $args->{-side}          : 'top';
+    $self->{STICKY} = exists $args->{-sticky}        ? delete $args->{-sticky}        : 'nsew';
+    $self->{USECC}  = exists $args->{-cursorcontrol} ? delete $args->{-cursorcontrol} : 1;
 
     unless ($self->{STICKY} =~ /$sideToSticky{$self->{SIDE}}/) {
 	croak "can't place '$self->{STICKY}' toolbar on '$self->{SIDE}' side";
@@ -71,6 +74,17 @@ sub Populate {
 
     $self->{HIGHLIGHT} = $self->{MW}->Frame(-bg => 'white');
     $self->{BALLOON}   = $self->{MW}->Balloon;
+
+    # check for Tk::CursorControl
+    $self->{CC} = undef;
+    if ($self->{USECC}) {
+	local $^W = 0; # suppress message from Win32::API
+	eval "require Tk::CursorControl";
+	unless ($@) {
+	    # CC is installed. Use it.
+	    $self->{CC} = $self->{MW}->CursorControl;
+	}
+    }
 }
 
 sub _packSelf {
@@ -110,24 +124,32 @@ sub _packEdge {
     my $self = shift;
     my $e    = shift;
 
-    #my $e    = $self->_edge;
     my $s    = $self->{SIDE};
 
-    my ($pack, $pad, $nopad);
+    my ($pack, $pad, $nopad, $fill);
 
     if ($s eq 'top' or $s eq 'bottom') {
 	$e->configure(-height => $edgeH, -width => $edgeW);
 	$pack  = 'left';
 	$pad   = '-padx';
 	$nopad = '-pady';
+	$fill  = 'y';
     } else {
 	$e->configure(-height => $edgeW, -width => $edgeH);
 	$pack  = 'top';
 	$pad   = '-pady';
 	$nopad = '-padx';
+	$fill  = 'x';
     }
 
-    $e->pack(-side => $pack, $pad => 5, $nopad => 0, -expand => 0);
+    if (exists $self->{SEPARATORS}{$e}) {
+	$e->configure(-cursor => $pack eq 'left' ? 'sb_h_double_arrow' : 'sb_v_double_arrow');
+	$self->{SEPARATORS}{$e}->pack(-side   => $pack,
+				      -fill   => $fill);
+    }
+
+    $e->pack(-side  => $pack, $pad => 5,
+	     $nopad => 0,  -expand => 0);
 }
 
 sub close {
@@ -160,10 +182,12 @@ sub movable {
 sub _enableEdge {
     my ($self, $e) = @_;
 
+    $e->bind('<1>' => sub { $self->{CC}->confine($self->{MW}) })
+	if defined $self->{CC};
+
     $e->bind('<B1-Motion>' => sub {
 		 $self->{ISMOVED} = 1;
 
-		 my $p       = $e->parent;
 		 my ($x, $y) = ($self->pointerx - $self->{MW}->rootx,
 				$self->pointery - $self->{MW}->rooty);
 
@@ -207,9 +231,9 @@ sub _enableEdge {
 	return unless $self->{ISMOVED};
 
 	$self->{ISMOVED} = 0;
-
 	$self->{DUMMY}->destroy;
-	$self->{DUMMY} = undef;
+	$self->{DUMMY}   = undef;
+	$self->{CC}->free($self->{MW}) if defined $self->{CC};
 
 	return unless $self->_whereAmI(1);
 	$self->{HIGHLIGHT}->packForget;
@@ -240,15 +264,15 @@ sub _whereAmI {
     my $h  = $self->{MW}->Height;
 
     # bound check
-    $x     = 1      if $x  < 0;
-    $y     = 1      if $y  < 0;
-    $x     = $w - 1 if $x  > $w;
-    $y     = $h - 1 if $y  > $h;
+    $x     = 1      if $x  <= 0;
+    $y     = 1      if $y  <= 0;
+    $x     = $w - 1 if $x  >= $w;
+    $y     = $h - 1 if $y  >= $h;
 
-    $x2    = 1      if $x2 < 0;
-    $y2    = 1      if $y2 < 0;
-    $x2    = $w - 1 if $x2 > $w;
-    $y2    = $h - 1 if $y2 > $h;
+    $x2    = 0      if $x2 <= 0;
+    $y2    = 0      if $y2 <= 0;
+    $x2    = $w - 1 if $x2 >= $w;
+    $y2    = $h - 1 if $y2 >= $h;
 
     my $dx = 0;
     my $dy = 0;
@@ -346,7 +370,9 @@ sub ToolButton {
 	croak "toolbutton can be only 'Button', 'Menubutton', 'Checkbutton', or 'Radiobutton'";
     }
 
-    my $m = delete $args{-tip} || '';
+    my $m = delete $args{-tip}         || '';
+    my $x = delete $args{-accelerator} || '';
+
     my $b = $self->{CONTAINER}->$type(%args,
 				      -relief  => 'flat',
 				      );
@@ -354,10 +380,13 @@ sub ToolButton {
     $self->_createButtonBindings($b);
 
     push @{$self->{WIDGETS}} => $b;
-
     $self->_packWidget($b);
 
     $self->{BALLOON}->attach($b, -balloonmsg => $m) if $m;
+    $self->{MW}->bind($x => [$b, 'invoke'])         if $x;
+
+    # change the bind tags.
+    #$b->bindtags([$b, ref($b), $b->toplevel, 'all']);
 
     return $b;
 }
@@ -408,19 +437,72 @@ sub ToolLabEntry {
 sub separator {
     my $self = shift;
 
+    my $f    = $self->{CONTAINER}->Frame(qw/-width 0
+					 -height 0/);
+
     my $sep  = $self->{CONTAINER}->Frame(qw/
 					 -borderwidth 5
 					 -relief sunken
 					 /);
 
+    $isDummy{$f} = $self->{SIDE};
+
     push @{$self->{WIDGETS}} => $sep;
-    $self->{SEPARATORS}{$sep} = 1;
+    $self->{SEPARATORS}{$sep} = $f;
     $self->_packWidget($sep);
+
+    $self->_createSeparatorBindings($sep);
 
     return 1;
 }
 
 sub _packWidget {
+    my ($self, $b) = @_;
+
+    return $self->_packEdge($b) if exists $self->{SEPARATORS}{$b};
+
+    my ($side, $pad, $nopad) = $self->{SIDE} =~ /^top$|^bottom$/ ? 
+	qw/left -padx -pady/ : qw/top -pady -padx/;
+
+    if (ref($b) eq 'Tk::LabEntry') {
+	$b->configure(-labelPack => [-side => $side]);
+    }
+
+    my @extra;
+    if (exists $packIn{$b}) {
+	@extra = (-in => $packIn{$b});
+
+	# repack everything now.
+	my $top = $containers{$b};
+	$top->{SIDE} = $self->{SIDE};
+
+	my $e = $top->_edge;
+	my @allSlaves = grep {$_ ne $e} $b->packSlaves;
+	$_   ->packForget for @allSlaves;
+
+	$top->_packEdge($e);
+	$top->_packWidget($_) for @allSlaves;
+    }
+
+    if (exists $isDummy{$b}) { # swap width/height if we need to.
+	my ($w, $h);
+
+	if ($side eq 'left' && $isDummy{$b} =~ /left|right/) {
+	    $w = 0;
+	    $h = $b->height;
+	} elsif ($side eq 'top'  && $isDummy{$b} =~ /top|bottom/) {
+	    $w = $b->width;
+	    $h = 0;
+	}
+
+	$b->configure(-width => $h, -height => $w) if defined $w;
+	$isDummy{$b} = $self->{SIDE};
+    }
+
+    $b->pack(-side => $side, $pad => 4, $nopad => 0, @extra);
+}
+
+sub _packWidget_old {
     my ($self, $b) = @_;
 
     return $self->_packEdge($b) if exists $self->{SEPARATORS}{$b};
@@ -455,7 +537,39 @@ sub _createButtonBindings {
     my ($self, $b) = @_;
 
     $b->bind('<Enter>' => sub { $b->configure(qw/-relief raised/) });
-    $b->bind('<Leave>' => sub { $b->configure(qw/-relief flat/) });
+    $b->bind('<Leave>' => sub { $b->configure(qw/-relief flat/)   });
+}
+
+sub _createSeparatorBindings {
+    my ($self, $s) = @_;
+
+    $s->bind('<1>'         => sub {
+	$ox = $s->XEvent->x;
+	$oy = $s->XEvent->y;
+    });
+
+    $s->bind('<B1-Motion>' => sub {
+	my $x = $s->XEvent->x;
+	my $y = $s->XEvent->y;
+
+	my $f = $self->{SEPARATORS}{$s};
+
+	if ($self->{SIDE} =~ /top|bottom/) {
+	    my $dx = $x - $ox;
+
+	    my $w  = $f->width + $dx;
+	    $w     = 0 if $w < 0;
+
+	    $f->GeometryRequest($w, $f->height);
+	} else {
+	    my $dy = $y - $oy;
+
+	    my $h  = $f->height + $dy;
+	    $h     = 0 if $h < 0;
+
+	    $f->GeometryRequest($f->width, $h);
+	}
+    });
 }
 
 sub Button   { goto &ToolButton }
@@ -512,6 +626,10 @@ release it over another ToolBar widget, then it will be embedded inside the
 second ToolBar. You can "un-embed" an embedded ToolBar simply by dragging it
 out. You can change the 15 pixel limit using the B<-close> option.
 
+Tk::ToolBar attempts to use Tk::CursorControl if it's already installed on
+the system. You can further control this using the I<-cursorcontrol> option.
+See L</PREREQUISITES>.
+
 The ToolBar is supposed to be created as a child of a Toplevel (MainWindow is
 a Toplevel widget) or a Frame. You are free to experiment otherwise,
 but expect the unexpected :-)
@@ -546,6 +664,12 @@ must be a string of the following characters 'nsew'. A string of 'ns' means that
 the ToolBar can only stick to the north (top) or south (bottom) sides. Defaults to
 'nsew'. This option can be set only during object creation.
 
+=item B<-cursorcontrol>
+
+This option specifies whether to use Tk::CursorControl to confine the cursor
+during dragging. The value must be either 1 or 0. The default is 1 which
+checks for Tk::CursorControl and uses it if present.
+
 =back
 
 =head1 WIDGET METHODS
@@ -563,8 +687,12 @@ For all widgets, except Labels, a tooltip can be specified via the B<-tip> optio
 
 This method creates a new Button inside the ToolBar.
 The I<-type> option can be used to specify
-what kind of button to create. Can be on of 'Button', 'Checkbutton', 'Menubutton', or
+what kind of button to create. Can be one of 'Button', 'Checkbutton', 'Menubutton', or
 'Radiobutton'. A tooltip message can be specified via the -tip option.
+An accelerator binding can be specified using the -accelerator option.
+The value of this option is any legal binding sequence as defined
+in L<bind>. For example,
+C<-accelerator =E<gt> 'E<lt>fE<gt>'> will invoke the button when the 'f' key is pressed.
 Any other options will be passed directly to the constructor
 of the button. The Button object is returned.
 
@@ -599,7 +727,7 @@ ToolBars, the label will be packed on top of the entry.
 
 =item I<$ToolBar>-E<gt>B<separator>
 
-This method inserts a separator.
+This method inserts a separator. Separators are movable.
 
 =back
 
@@ -621,25 +749,33 @@ If you want more, send me requests.
 
 =over 4
 
-=item o
+=item o Allow buttons to be "tied" to menu items. Somewhat taken care of
+with the -accelerator method for buttons.
 
-Allow buttons to be "tied" to menu items.
-
-=item o
-
-Include some built-in pixmaps for some of the more common ToolButtons,
+=item o Include some built-in pixmaps for some of the more common ToolButtons,
 like "Save", "New", "Open", etc ..
 
-=item o
+=item o Implement Drag-n-Drop to be able to move Tool* widgets interactively.
 
-Allow movable and fixed separators.
-
-=item o
-
-Constrain cursor within Toplevel window.
 
 =back
 
+
+=head1 PREREQUISITES
+
+Tk::ToolBar uses only core pTk modules. So you don't need any special
+prerequisites. But, if Tk::CursorControl is installed on your system,
+then Tk::ToolBar will use it to confine the cursor to your window when
+dragging ToolBars (unless you tell it not to).
+
+Note also that Tk::CursorControl is defined as a prerequisite in
+Makefile.PL. So, during installation you might get a warning saying:
+
+C<Warning: prerequisite Tk::CursorControl failed to load ...>
+
+if you don't have it installed. You can ignore this warning if you
+don't want to install Tk::CursorControl. Tk::ToolBar will continue
+to work properly.
 
 =head1 INSTALLATION
 
