@@ -1,0 +1,76 @@
+NAME
+    Tk::ToolBar - A toolbar widget for Perl/Tk
+
+SYNOPSIS
+            use Tk;
+            use Tk::ToolBar;
+
+            my $mw = new MainWindow;
+            my $tb = $mw->ToolBar(qw/-movable 1 -side top/);
+
+            $tb->ToolButton(-text => 'test');
+            $tb->ToolButton(-text => 'Me');
+
+DESCRIPTION
+    This module implements a dockable toolbar. It is in the same spirit as
+    the "short-cut" toolbars found in most major applications, such as most
+    web browsers and text editors (where you find the "back" or "save"
+    buttons).
+
+    Buuttons of any type (regular, check, radio) can be packed inside this
+    widget. Moreover, the ToolBar itself can be made dockable, such that it
+    can be dragged to any edge of your window.
+
+    The ToolBar is supposed to be created as a child of a Toplevel
+    (MainWindow is a Toplevel widget). You are free to experiment otherwise,
+    but expect the unexpected :-)
+
+WIDGET-SPECIFIC OPTIONS
+    The ToolBar widget takes the following arguments:
+
+    -side
+        This option tells the ToolBar what edge to stick to. Can be one of
+        'top', 'bottom', 'left' or 'right'. Defaults to 'top'. This option
+        can be set only during object creation.
+
+    -movable
+        This option specifies whether the ToolBar is dockable or not. A
+        dockable ToolBar can be dragged around with the mouse to any edge of
+        the window. Default is 1.
+
+    -close
+        This options specifies, in pixels, how close we have to drag the
+        ToolBar an edge for the ToolBar to stick to it.
+
+WIDGET METHODS
+    *$ToolBar*->ToolButton(?-type => *buttonType*,? *options*)
+        This method creates a new button inside the ToolBar. The buttons are
+        ordered in the same order they're created. The *-type* option can be
+        used to specify what kind of button to create. Can be on of
+        'Button', 'Checkbutton', or 'Radiobutton'. Any other options will be
+        passed directly to the constructor of the button. The button object
+        is returned.
+
+BUGS
+    Not really a bug, but a feature ;-) The ToolBar widget assumes that you
+    use *pack* in your main window. Actually, it will *pack* itself in your
+    window. If you are using another geometry manager, then you *MIGHT* get
+    some weird behaviour. I have tested it very quickly, and found no
+    surprises, but let me know if you do.
+
+INSTALLATION
+    Either the usual:
+
+            perl Makefile.PL
+            make
+            make install
+
+    or just stick it somewhere in @INC where perl can find it. It's in pure
+    Perl.
+
+AUTHOR
+    Ala Qumsieh *aqumsieh@cpan.org*
+
+COPYRIGHTS
+    This module is distributed under the same terms as Perl itself.
+
