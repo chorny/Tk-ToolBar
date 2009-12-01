@@ -793,7 +793,7 @@ Tk::ToolBar - A toolbar widget for Perl/Tk
         use Tk;
         use Tk::ToolBar;
 
-        my $mw = new MainWindow;
+        my $mw = MainWindow->new;
         my $tb = $mw->ToolBar(qw/-movable 1 -side top
                                  -indicatorcolor blue/);
 

@@ -7,7 +7,7 @@ use Tk;
 use Tk::ToolBar;
 #use Tk::LabOptionmenu;
 
-my $mw = new MainWindow;
+my $mw = MainWindow->new;
 my $tb = $mw->ToolBar;
 
 my $cv = $mw->Canvas(qw/-bg black/)->pack(qw/-fill both -expand 1/);
