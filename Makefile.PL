@@ -4,7 +4,10 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
 	      NAME             => 'Tk::ToolBar',
 	      VERSION_FROM     => 'ToolBar.pm',
-	      PREREQ_PM        => {Tk::CursorControl => 0},
+	      PREREQ_PM        => {
+	        Tk::CursorControl => 0,
+	        'Test' => 0,
+	      },
 	      ($] >= 5.005 ?
 	       (ABSTRACT_FROM  => 'ToolBar.pm',
 		AUTHOR         => 'Ala Qumsieh <aqumsieh@cpan.org>') : ()),
