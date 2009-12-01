@@ -3,4 +3,5 @@ Makefile.PL
 MANIFEST
 README
 t/test.t
+t/pod.t
 ToolBar.pm
