@@ -5,4 +5,5 @@ _build
 Tk-ToolBar-*
 blib
 *.tmp
-
+Makefile
+pm_to_blib
