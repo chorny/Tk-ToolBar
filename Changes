@@ -1,5 +1,36 @@
 Revision history for Perl extension Tk::ToolBar.
 
+0.10
+new maintainer: Alexandr Ciornii
+        - Dist maintenance
+        - pod test
+        - Better META.yml
+
+0.09  Fri Jan  9 18:28:31 PST 2004
+	- Added -in.
+	- Added -float. Now toolbars can float on desktop.
+	- Changed shape of edge slightly
+
+0.08  Wed Aug  6 16:40:33 PDT 2003
+	- Fixed Tk::CursorControl support (somehow it got dropped).
+	- $_ is localized when reading tkIcons.
+	- Added -space option to separators.
+	- Added -indicatorcolor and -indicatorrelief options to 
+	  control color/relief of visual indicator.
+	- Changed default visual indicator color to nice blue.
+
+0.07  Hmmm ...
+
+0.06  Wed Jun 25 15:46:31 PDT 2003
+	- Added tk-style icons.
+	- Misc. bug fixes.
+
+0.05  Tue Jun  3 11:38:25 2003
+	- Made separators movable.
+	- Added '-accelerator' option to ToolButtons to bind
+	  for short-cuts.
+	- Added support for Tk::CursorControl, if installed.
+
 0.01  Fri Mar 14 16:35:07 2003
 	- original version; created by h2xs 1.21 with options
 		-AX -n Tk::ToolBar
@@ -19,28 +50,3 @@ Revision history for Perl extension Tk::ToolBar.
 	  position).
 	- Added tooltips via Tk::Balloon.
 	
-0.05  Tue Jun  3 11:38:25 2003
-	- Made separators movable.
-	- Added '-accelerator' option to ToolButtons to bind
-	  for short-cuts.
-	- Added support for Tk::CursorControl, if installed.
-
-0.06  Wed Jun 25 15:46:31 PDT 2003
-	- Added tk-style icons.
-	- Misc. bug fixes.
-
-0.07  Hmmm ...
-
-0.08  Wed Aug  6 16:40:33 PDT 2003
-	- Fixed Tk::CursorControl support (somehow it got dropped).
-	- $_ is localized when reading tkIcons.
-	- Added -space option to separators.
-	- Added -indicatorcolor and -indicatorrelief options to 
-	  control color/relief of visual indicator.
-	- Changed default visual indicator color to nice blue.
-
-0.09  Fri Jan  9 18:28:31 PST 2004
-	- Added -in.
-	- Added -float. Now toolbars can float on desktop.
-	- Changed shape of edge slightly
-
