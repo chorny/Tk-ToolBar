@@ -5,6 +5,7 @@ new maintainer: Alexandr Ciornii
         - Dist maintenance
         - pod test
         - Better META.yml
+        - Symlink removed
 
 0.09  Fri Jan  9 18:28:31 PST 2004
 	- Added -in.

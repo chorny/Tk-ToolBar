@@ -5,3 +5,5 @@ README
 t/test.t
 t/pod.t
 ToolBar.pm
+ToolBar/tkIcons
+toolbar.pl
