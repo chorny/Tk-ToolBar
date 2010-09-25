@@ -7,7 +7,8 @@ WriteMakefile1(
 	      NAME             => 'Tk::ToolBar',
 	      VERSION_FROM     => 'ToolBar.pm',
 	      PREREQ_PM        => {
-	        Tk::CursorControl => 0,
+	        'Tk' => 0,
+	        'Tk::CursorControl' => 0,
 	      },
 	      BUILD_REQUIRES => {
 	          'Test' => 0,
