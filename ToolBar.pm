@@ -2,7 +2,6 @@ package Tk::ToolBar;
 
 use 5.005;
 use strict;
-use warnings;
 use Tk::Frame;
 use Tk::Balloon;
 
