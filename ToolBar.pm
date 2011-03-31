@@ -499,26 +499,26 @@ sub ToolButton {
     my $m = delete $args{-tip}         || '';
     my $x = delete $args{-accelerator} || '';
 
-    my $b = $self->{CONTAINER}->$type(%args,
+    my $but = $self->{CONTAINER}->$type(%args,
 				      $self->{STYLE} ? () : (
 							     -relief      => 'flat',
 							     -borderwidth => 1,
 							    ),
 				     );
 
-    $self->_createButtonBindings($b);
-    $self->_configureWidget     ($b);
+    $self->_createButtonBindings($but);
+    $self->_configureWidget     ($but);
 
-    push @{$self->{WIDGETS}} => $b;
-    $self->_packWidget($b);
+    push @{$self->{WIDGETS}} => $but;
+    $self->_packWidget($but);
 
-    $self->{BALLOON}->attach($b, -balloonmsg => $m) if $m;
-    $self->{MW}->bind($x => [$b, 'invoke'])         if $x;
+    $self->{BALLOON}->attach($but, -balloonmsg => $m) if $m;
+    $self->{MW}->bind($x => [$but, 'invoke'])         if $x;
 
     # change the bind tags.
-    #$b->bindtags([$b, ref($b), $b->toplevel, 'all']);
+    #$but->bindtags([$but, ref($but), $but->toplevel, 'all']);
 
-    return $b;
+    return $but;
 }
 
 sub ToolLabel {
