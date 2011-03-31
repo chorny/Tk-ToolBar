@@ -2,6 +2,7 @@ package Tk::ToolBar;
 
 use 5.005;
 use strict;
+use warnings;
 use Tk::Frame;
 use Tk::Balloon;
 
@@ -538,12 +539,13 @@ sub ToolEntry {
     my %args = @_;
 
     my $m = delete $args{-tip} || '';
-    my $l = $self->{CONTAINER}->Entry(%args, -width => 5);
+    $args{-width} = 5 unless exists $args{-width};
+    my $l = $self->{CONTAINER}->Entry(%args);
 
     push @{$self->{WIDGETS}} => $l;
 
     $self->_packWidget($l);
-    $self->{BALLOON}->attach($b, -balloonmsg => $m) if $m;
+    $self->{BALLOON}->attach($l, -balloonmsg => $m) if $m;
 
     return $l;
 }
@@ -554,12 +556,13 @@ sub ToolLabEntry {
 
     require Tk::LabEntry;
     my $m = delete $args{-tip} || '';
-    my $l = $self->{CONTAINER}->LabEntry(%args, -width => 5);
+    $args{-width} = 5 unless exists $args{-width};
+    my $l = $self->{CONTAINER}->LabEntry(%args);
 
     push @{$self->{WIDGETS}} => $l;
 
     $self->_packWidget($l);
-    $self->{BALLOON}->attach($b, -balloonmsg => $m) if $m;
+    $self->{BALLOON}->attach($l, -balloonmsg => $m) if $m;
 
     return $l;
 }
@@ -574,7 +577,23 @@ sub ToolOptionmenu {
     push @{$self->{WIDGETS}} => $l;
 
     $self->_packWidget($l);
-    $self->{BALLOON}->attach($b, -balloonmsg => $m) if $m;
+    $self->{BALLOON}->attach($l, -balloonmsg => $m) if $m;
+
+    return $l;
+}
+
+sub ToolBrowseEntry {
+    my $self = shift;
+    my %args = @_;
+
+	require Tk::BrowseEntry;
+    my $m = delete $args{-tip} || '';
+    my $l = $self->{CONTAINER}->BrowseEntry(%args);
+
+    push @{$self->{WIDGETS}} => $l;
+
+    $self->_packWidget($l);
+    $self->{BALLOON}->attach($l, -balloonmsg => $m) if $m;
 
     return $l;
 }
@@ -735,11 +754,12 @@ sub _createSeparatorBindings {
 	   });
 }
 
-sub Button     { goto &ToolButton     }
-sub Label      { goto &ToolLabel      }
-sub Entry      { goto &ToolEntry      }
-sub LabEntry   { goto &ToolLabEntry   }
-sub Optionmenu { goto &ToolOptionmenu }
+sub Button     { goto &ToolButton      }
+sub Label      { goto &ToolLabel       }
+sub Entry      { goto &ToolEntry       }
+sub LabEntry   { goto &ToolLabEntry    }
+sub Optionmenu { goto &ToolOptionmenu  }
+sub BrowseEntry { goto &ToolBrowseEntry }
 
 sub _clone {
   my ($self, $top, $in) = @_;
@@ -991,6 +1011,15 @@ This method creates a new Optionmenu inside the ToolBar.
 A tooltip message can be specified via the -tip option.
 Any other options will be passed directly to the constructor
 of the Optionmenu. The Optionmenu object is returned.
+
+=item I<$ToolBar>-E<gt>B<ToolBrowseEntry>(I<options>)
+
+=item I<$ToolBar>-E<gt>B<BrowseEntry>(I<options>)
+
+This method creates a new L<Tk::BrowseEntry> inside the ToolBar.
+A tooltip message can be specified via the -tip option.
+Any other options will be passed directly to the constructor
+of the BrowseEntry. The BrowseEntry object is returned.
 
 =item I<$ToolBar>-E<gt>B<separator>(?-movable => 0/1, -space => num?)
 
