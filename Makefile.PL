@@ -22,6 +22,12 @@ WriteMakefile1(
 	              repository => 'http://github.com/chorny/Tk-ToolBar',
 	          },
 	      },
+    $^O =~/win/i ? (
+        dist => {
+            TAR      => 'ptar',
+            TARFLAGS => '-c -C -f',
+        },
+    ) : (),
 	      PM               => {
 				   'lib/Tk/ToolBar.pm'       => '$(INST_LIB)/Tk/ToolBar.pm',
 				   'toolbar.pl'       => ($] >= 5.005 ?
