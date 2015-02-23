@@ -5,7 +5,7 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 WriteMakefile1(
 	      NAME             => 'Tk::ToolBar',
-	      VERSION_FROM     => 'ToolBar.pm',
+	      VERSION_FROM     => 'lib/Tk/ToolBar.pm',
 	      PREREQ_PM        => {
 	        'Tk' => 0,
 	        'Tk::CursorControl' => 0,
@@ -13,7 +13,7 @@ WriteMakefile1(
 	      BUILD_REQUIRES => {
 	          'Test' => 0,
 	      },
-	      ABSTRACT_FROM => 'ToolBar.pm',
+	      ABSTRACT_FROM => 'lib/Tk/ToolBar.pm',
 	      AUTHOR => 'Ala Qumsieh <aqumsieh@cpan.org>',
 	      LICENSE => 'perl',
 	      MIN_PERL_VERSION => '5.005',
@@ -23,7 +23,7 @@ WriteMakefile1(
 	          },
 	      },
 	      PM               => {
-				   'ToolBar.pm'       => '$(INST_LIB)/Tk/ToolBar.pm',
+				   'lib/Tk/ToolBar.pm'       => '$(INST_LIB)/Tk/ToolBar.pm',
 				   'toolbar.pl'       => ($] >= 5.005 ?
 							  '$(INST_ARCHLIB)' :
 							  '$(INST_LIB)') .

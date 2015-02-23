@@ -968,7 +968,7 @@ what kind of button to create. Can be one of 'Button', 'Checkbutton', 'Menubutto
 'Radiobutton'. A tooltip message can be specified via the -tip option.
 An accelerator binding can be specified using the -accelerator option.
 The value of this option is any legal binding sequence as defined
-in L<bind>. For example,
+in L<bind|Tk::bind>. For example,
 C<-accelerator =E<gt> 'E<lt>fE<gt>'> will invoke the button when the 'f' key is pressed.
 Any other options will be passed directly to the constructor
 of the button. The Button object is returned.
@@ -1037,7 +1037,7 @@ in your Tk programs. To view those images, run the B<widget> program
 that is bundled with Tk, scroll down to the 'User Contributed
 Demonstrations', and click on the Tk::ToolBar entry.
 
-Note that the images are created using the L<text|Photo> method. Also,
+Note that the images are created using the L<text|Tk::Photo> method. Also,
 Tk::ToolBar, upon its creation, pre-loads all of the bundled images
 into memory. This means that those images are available for use in other
 widgets in your Tk program. This also means that unless those images

@@ -4,6 +4,6 @@ MANIFEST
 README
 t/test.t
 t/pod.t
-ToolBar.pm
+lib/Tk/ToolBar.pm
 ToolBar/tkIcons
 toolbar.pl
