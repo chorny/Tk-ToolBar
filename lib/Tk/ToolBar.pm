@@ -14,7 +14,7 @@ use POSIX qw/ceil/;
 Construct Tk::Widget 'ToolBar';
 
 use vars qw/$VERSION/;
-$VERSION = '0.10';
+$VERSION = '0.11';
 
 my $edgeH = 24;
 my $edgeW = 5;
@@ -1117,7 +1117,7 @@ and to Adrian Davis for packaging them in a Tk-friendly format.
 
 Ala Qumsieh I<aqumsieh@cpan.org>
 
-=head1 COPYRIGHTS
+=head1 LICENSE
 
 This module is distributed under the same terms as Perl itself.
 

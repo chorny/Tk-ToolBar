@@ -1,5 +1,9 @@
 Revision history for Perl extension Tk::ToolBar.
 
+0.11  2015-02-23
+    - pod fixes (Alexander Becker)
+    - support for Tk::BrowseEntry
+
 0.10  Sun Feb 28 2010
 new maintainer: Alexandr Ciornii
         - Dist maintenance
