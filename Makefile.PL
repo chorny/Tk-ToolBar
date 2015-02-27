@@ -4,39 +4,38 @@ use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 WriteMakefile1(
-	      NAME             => 'Tk::ToolBar',
-	      VERSION_FROM     => 'lib/Tk/ToolBar.pm',
-	      PREREQ_PM        => {
-	        'Tk' => 0,
-	        'Tk::CursorControl' => 0,
-	      },
-	      BUILD_REQUIRES => {
-	          'Test' => 0,
-	      },
-	      ABSTRACT_FROM => 'lib/Tk/ToolBar.pm',
-	      AUTHOR => 'Ala Qumsieh <aqumsieh@cpan.org>',
-	      LICENSE => 'perl',
-	      MIN_PERL_VERSION => '5.005',
-	      META_MERGE => {
-	          resources => {
-	              repository => 'http://github.com/chorny/Tk-ToolBar',
-	          },
-	      },
+	NAME             => 'Tk::ToolBar',
+	VERSION_FROM     => 'lib/Tk/ToolBar.pm',
+	PREREQ_PM        => {
+		'Tk' => 0,
+		# Don't define as strict dependency because Tk::CursorControl is not available always.
+		# E.g. ActiveState Perl frequently lacks this package, avoiding this module to be build for PPM.
+		#'Tk::CursorControl' => 0,
+	},
+	BUILD_REQUIRES => {
+		'Test' => 0,
+	},
+	ABSTRACT_FROM => 'lib/Tk/ToolBar.pm',
+	AUTHOR => 'Ala Qumsieh <aqumsieh@cpan.org>',
+	LICENSE => 'perl',
+	MIN_PERL_VERSION => '5.005',
+	META_MERGE => {
+		resources => {
+			repository => 'http://github.com/chorny/Tk-ToolBar',
+		},
+	},
     $^O =~/win/i ? (
         dist => {
             TAR      => 'ptar',
             TARFLAGS => '-c -C -f',
         },
     ) : (),
-	      PM               => {
-				   'lib/Tk/ToolBar.pm'       => '$(INST_LIB)/Tk/ToolBar.pm',
-				   'toolbar.pl'       => ($] >= 5.005 ?
-							  '$(INST_ARCHLIB)' :
-							  '$(INST_LIB)') .
-				   '/Tk/demos/widtrib/toolbar.pl',
-				   'ToolBar/tkIcons'  => '$(INST_LIB)/Tk/ToolBar/tkIcons',
-				  },
-	     );
+	PM               => {
+		'lib/Tk/ToolBar.pm'       => '$(INST_LIB)/Tk/ToolBar.pm',
+		'toolbar.pl'       => ($] >= 5.005 ? '$(INST_ARCHLIB)' : '$(INST_LIB)') . '/Tk/demos/widtrib/toolbar.pl',
+		'ToolBar/tkIcons'  => '$(INST_LIB)/Tk/ToolBar/tkIcons',
+	},
+);
 
 sub WriteMakefile1 {  #Written by Alexandr Ciornii, version 0.21. Added by eumm-upgrade.
     my %params=@_;
