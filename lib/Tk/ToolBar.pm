@@ -14,7 +14,7 @@ use POSIX qw/ceil/;
 Construct Tk::Widget 'ToolBar';
 
 use vars qw/$VERSION/;
-$VERSION = '0.11';
+$VERSION = '0.12';
 
 my $edgeH = 24;
 my $edgeW = 5;

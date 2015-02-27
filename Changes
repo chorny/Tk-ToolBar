@@ -1,5 +1,9 @@
 Revision history for Perl extension Tk::ToolBar.
 
+0.12  2015-02-28
+    - removes Tk::CursorControl as prerequisite to allow automatic PPM build by ActiveState
+	- normalized white space ident in Makefile.PL
+
 0.11  2015-02-23
     - pod fixes (Alexander Becker)
     - support for Tk::BrowseEntry
